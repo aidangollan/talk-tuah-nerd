@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAudio } from "./useAudio";
 import { GRAVITY, JUMP_FORCE, PIPE_GAP, PIPE_SPAWN_RATE, PIPE_SPEED } from "~/constants";
-import { BirdRect, Pipe } from "~/types";
+import type { BirdRect, Pipe } from "~/types";
 
 function isKeyboardEvent(event: KeyboardEvent | MouseEvent): event is KeyboardEvent {
     return 'code' in event;

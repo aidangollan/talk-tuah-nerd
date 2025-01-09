@@ -1,5 +1,5 @@
 import { PIPE_GAP } from "~/constants";
-import { Pipe } from "~/types";
+import { type Pipe } from "~/types";
 
 interface PipeProps {
     pipe: Pipe;
