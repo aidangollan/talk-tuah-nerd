@@ -41,7 +41,6 @@ const FlappyBird: React.FC = () => {
   const deathSoundRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    // Create audio elements
     jumpSoundRef.current = new Audio('/bruh.mp3');
     deathSoundRef.current = new Audio('/aintnoway.mp3');
   }, []);
@@ -65,7 +64,6 @@ const FlappyBird: React.FC = () => {
       }
       setBirdVelocity(JUMP_FORCE);
       
-      // Play jump sound
       if (jumpSoundRef.current) {
         jumpSoundRef.current.currentTime = 0;
         jumpSoundRef.current.play().catch(error => console.log('Jump sound playback failed:', error));
@@ -92,15 +90,18 @@ const FlappyBird: React.FC = () => {
       }
     };
 
+    // Store the current value of gameRef in a variable
+    const currentGameRef = gameRef.current;
+
     window.addEventListener('keydown', handleKeyPress);
-    if (gameRef.current) {
-      gameRef.current.addEventListener('click', handleJump as EventListener);
+    if (currentGameRef) {
+      currentGameRef.addEventListener('click', handleJump as EventListener);
     }
 
     return () => {
       window.removeEventListener('keydown', handleKeyPress);
-      if (gameRef.current) {
-        gameRef.current.removeEventListener('click', handleJump as EventListener);
+      if (currentGameRef) {
+        currentGameRef.removeEventListener('click', handleJump as EventListener);
       }
     };
   }, [handleJump, gameOver, resetGame]);
@@ -190,7 +191,6 @@ const FlappyBird: React.FC = () => {
           backgroundSize: 'cover',
         }}
       >
-        {/* Bird */}
         <div
           className="absolute w-[68px] h-[48px] transition-transform"
           style={{
@@ -203,10 +203,8 @@ const FlappyBird: React.FC = () => {
           }}
         />
 
-        {/* Pipes */}
         {pipes.map((pipe, index) => (
           <React.Fragment key={index}>
-            {/* Top pipe */}
             <div
               className="absolute w-[52px]"
               style={{
@@ -219,7 +217,6 @@ const FlappyBird: React.FC = () => {
                 transform: 'rotate(180deg)',
               }}
             />
-            {/* Bottom pipe */}
             <div
               className="absolute w-[52px]"
               style={{
@@ -235,7 +232,6 @@ const FlappyBird: React.FC = () => {
           </React.Fragment>
         ))}
 
-        {/* Ground */}
         <div
           className="absolute bottom-0 w-full h-[112px]"
           style={{
@@ -245,7 +241,6 @@ const FlappyBird: React.FC = () => {
           }}
         />
 
-        {/* Score */}
         <div className="absolute top-4 left-0 w-full text-center text-white text-4xl font-bold">
           {score}
         </div>
