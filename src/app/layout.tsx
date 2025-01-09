@@ -6,7 +6,7 @@ import { type Metadata } from "next";
 export const metadata: Metadata = {
   title: "talk tuah nerd",
   description: "hack tuah, code on that thang.",
-  icons: [{ rel: "icon", url: "/galacy.ico" }],
+  icons: [{ rel: "icon", url: "/galaxy.ico" }],
 };
 
 export default function RootLayout({

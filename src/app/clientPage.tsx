@@ -1,7 +1,6 @@
 "use client"
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { processAudio } from '~/server/actions/voice';
 
 const GRAVITY = 0.6;
 const JUMP_FORCE = -9;
@@ -34,13 +33,18 @@ const FlappyBird: React.FC = () => {
   const [birdPos, setBirdPos] = useState<number>(250);
   const [birdVelocity, setBirdVelocity] = useState<number>(0);
   const [pipes, setPipes] = useState<Pipe[]>([]);
-  const [isRecording, setIsRecording] = useState<boolean>(false);
-  const [audioPermission, setAudioPermission] = useState<boolean>(false);
   
   const gameRef = useRef<HTMLDivElement | null>(null);
   const frameRef = useRef<number | null>(null);
   const lastPipeRef = useRef<number>(Date.now());
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const jumpSoundRef = useRef<HTMLAudioElement | null>(null);
+  const deathSoundRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    // Create audio elements
+    jumpSoundRef.current = new Audio('/bruh.mp3');
+    deathSoundRef.current = new Audio('/aintnoway.mp3');
+  }, []);
 
   const generatePipe = useCallback((): Pipe => {
     const minHeight = 50;
@@ -60,6 +64,12 @@ const FlappyBird: React.FC = () => {
         setGameStarted(true);
       }
       setBirdVelocity(JUMP_FORCE);
+      
+      // Play jump sound
+      if (jumpSoundRef.current) {
+        jumpSoundRef.current.currentTime = 0;
+        jumpSoundRef.current.play().catch(error => console.log('Jump sound playback failed:', error));
+      }
     }
   }, [gameStarted]);
 
@@ -70,69 +80,9 @@ const FlappyBird: React.FC = () => {
     setScore(0);
     setGameOver(false);
     setGameStarted(false);
-    setIsRecording(false);
     lastPipeRef.current = Date.now();
-    
-    // Stop current recording if it exists
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-      mediaRecorderRef.current.stop();
-    }
   }, []);
 
-  // Audio setup effect
-  useEffect(() => {
-    let chunks: Blob[] = [];
-    
-    async function setupAudio() {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const mediaRecorder = new MediaRecorder(stream);
-        mediaRecorderRef.current = mediaRecorder;
-        setAudioPermission(true);
-
-        mediaRecorder.ondataavailable = async (event) => {
-          if (event.data.size > 0) {
-            chunks.push(event.data);
-            // Process the audio chunk immediately
-            const audioBlob = new Blob([event.data], { type: 'audio/webm' });
-            if (!gameOver) {
-              const isValidFlap = await processAudio(audioBlob);
-              if (isValidFlap) {
-                setBirdVelocity(JUMP_FORCE);
-              }
-            }
-          }
-        };
-
-        // Stop any existing recording
-        if (mediaRecorder.state === 'recording') {
-          mediaRecorder.stop();
-        }
-
-        chunks = []; // Reset chunks
-        mediaRecorder.start(500); // Record in 500ms chunks
-        
-      } catch (err) {
-        console.error('Error accessing microphone:', err);
-        setAudioPermission(false);
-      }
-    }
-
-    if (gameStarted && !isRecording) {
-      setIsRecording(true);
-      setupAudio();
-    }
-
-    return () => {
-      if (mediaRecorderRef.current) {
-        if (mediaRecorderRef.current.state === 'recording') {
-          mediaRecorderRef.current.stop();
-        }
-      }
-    };
-  }, [gameStarted, isRecording, gameOver]);
-
-  // Game controls effect
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.code === 'Space' && gameOver) {
@@ -155,7 +105,6 @@ const FlappyBird: React.FC = () => {
     };
   }, [handleJump, gameOver, resetGame]);
 
-  // Game loop effect
   useEffect(() => {
     if (!gameStarted || gameOver) return;
 
@@ -179,8 +128,8 @@ const FlappyBird: React.FC = () => {
         const birdRect: BirdRect = {
           x: 100,
           y: birdPos,
-          width: 34,
-          height: 24,
+          width: 68,
+          height: 38,
         };
 
         for (const pipe of newPipes) {
@@ -190,6 +139,10 @@ const FlappyBird: React.FC = () => {
             (birdRect.y < pipe.topHeight || birdRect.y + birdRect.height > pipe.topHeight + PIPE_GAP)
           ) {
             setGameOver(true);
+            if (deathSoundRef.current) {
+              deathSoundRef.current.currentTime = 0;
+              deathSoundRef.current.play().catch(error => console.log('Death sound playback failed:', error));
+            }
           }
 
           if (!pipe.passed && pipe.x + 52 < birdRect.x) {
@@ -218,7 +171,16 @@ const FlappyBird: React.FC = () => {
   }, [gameStarted, gameOver, birdVelocity, birdPos, generatePipe]);
 
   return (
-    <div className="relative w-full h-screen flex items-center justify-center bg-gray-900">
+    <div className="relative w-full h-screen flex items-center justify-center animate-gradient bg-gradient-to-r from-purple-500 via-pink-500 via-red-500 via-yellow-500 via-green-500 via-blue-500 to-purple-500 bg-[length:200%_200%]">
+      <style jsx global>{`
+        @keyframes gradient {
+          0% { background-position: 0% 50%; }
+          100% { background-position: 200% 50%; }
+        }
+        .animate-gradient {
+          animation: gradient 8s linear infinite;
+        }
+      `}</style>
       <div 
         ref={gameRef}
         className="relative w-[800px] h-[600px] overflow-hidden cursor-pointer"
@@ -230,12 +192,12 @@ const FlappyBird: React.FC = () => {
       >
         {/* Bird */}
         <div
-          className="absolute w-[34px] h-[24px] transition-transform"
+          className="absolute w-[68px] h-[48px] transition-transform"
           style={{
             left: '100px',
             top: `${birdPos}px`,
             transform: `rotate(${birdVelocity * 3}deg)`,
-            backgroundImage: 'url("/bird.png")',
+            backgroundImage: 'url("/audrey.png")',
             backgroundSize: 'contain',
             backgroundRepeat: 'no-repeat',
           }}
@@ -251,10 +213,10 @@ const FlappyBird: React.FC = () => {
                 left: `${pipe.x}px`,
                 top: 0,
                 height: `${pipe.topHeight}px`,
-                backgroundImage: 'url("/pipe.png")',
-                backgroundSize: '100% 100%',
+                backgroundImage: 'url("/nosu.png")',
+                backgroundSize: '52px 100%',
+                backgroundRepeat: 'no-repeat',
                 transform: 'rotate(180deg)',
-                zIndex: 1,
               }}
             />
             {/* Bottom pipe */}
@@ -264,8 +226,8 @@ const FlappyBird: React.FC = () => {
                 left: `${pipe.x}px`,
                 top: `${pipe.topHeight + PIPE_GAP}px`,
                 height: '800px',
-                backgroundImage: 'url("/pipe.png")',
-                backgroundSize: '52px auto',
+                backgroundImage: 'url("/nosu.png")',
+                backgroundSize: '52px 100%',
                 backgroundRepeat: 'no-repeat',
                 zIndex: 1,
               }}
@@ -284,26 +246,19 @@ const FlappyBird: React.FC = () => {
         />
 
         {/* Score */}
-        <div className="absolute top-4 left-0 w-full text-center text-white text-4xl font-bold z-10">
+        <div className="absolute top-4 left-0 w-full text-center text-white text-4xl font-bold">
           {score}
         </div>
 
         {!gameStarted && (
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-2xl text-center z-10">
-            Click or Press Space to Start<br />
-            Say "Hey!" to Flap!
-          </div>
-        )}
-
-        {!audioPermission && gameStarted && (
-          <div className="absolute top-8 left-1/2 transform -translate-x-1/2 text-red-500 text-xl z-10">
-            Please enable microphone access!
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-2xl text-center">
+            Click or Press Space to Start
           </div>
         )}
 
         {gameOver && (
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-2xl text-center z-10">
-            Game Over!<br />
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-2xl text-center">
+            You died LOL<br />
             Score: {score}<br />
             Press Space to Restart
           </div>
